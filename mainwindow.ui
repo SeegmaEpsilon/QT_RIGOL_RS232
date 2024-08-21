@@ -15,7 +15,7 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="1" column="0">
+    <item row="2" column="0">
      <widget class="QTextEdit" name="console">
       <property name="readOnly">
        <bool>true</bool>
@@ -26,6 +26,13 @@
      <widget class="QPushButton" name="pushButton_uart_connect">
       <property name="text">
        <string>Подключиться</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0">
+     <widget class="QPushButton" name="pushButton_get_RMS_V">
+      <property name="text">
+       <string>Начать запрос СКЗ напряжения первого канала осциллографа</string>
       </property>
      </widget>
     </item>

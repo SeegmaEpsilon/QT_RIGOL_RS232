@@ -7,6 +7,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    timerRequest = new QTimer();
     uart = new UART();
 
     uart->configureAllMenus(ui->menuSettings);
@@ -15,6 +16,14 @@ MainWindow::MainWindow(QWidget *parent)
     {
         QMessageBox::warning(this, QString::fromUtf8("Ошибка"), QString::fromUtf8("Выбранный порт недоступен"));
     });
+
+    connect(timerRequest, &QTimer::timeout, this, [this]()
+    {
+        QString request = ":meas:vrms? chan1\n";
+        uart->send(request);
+        qDebug() << "Requested:     " << request;
+    });
+
     connect(uart, &UART::signalMessageReseived, this, &MainWindow::slotMessageProcess);
 
     // TODO: реализовать запрос данных от осциллографа RIGOL через RS232
@@ -70,6 +79,24 @@ void MainWindow::on_pushButton_uart_connect_clicked()
     {
         uart->close();
         ui->pushButton_uart_connect->setText(tr("Подключиться"));
+        isConnected = false;
+    }
+}
+
+void MainWindow::on_pushButton_get_RMS_V_clicked()
+{
+    static bool isConnected = false;
+
+    if(!isConnected)
+    {
+        timerRequest->start(1000);
+        ui->pushButton_get_RMS_V->setText(tr("Остановить запрос СКЗ напряжения первого канала осциллографа"));
+        isConnected = true;
+    }
+    else
+    {
+        timerRequest->stop();
+        ui->pushButton_get_RMS_V->setText(tr("Начать запрос СКЗ напряжения первого канала осциллографа"));
         isConnected = false;
     }
 }

@@ -6,6 +6,7 @@
 #include <QTime>
 #include <QDebug>
 #include <QFile>
+#include <QTimer>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -26,8 +27,11 @@ public slots:
 private slots:
     void on_pushButton_uart_connect_clicked();
 
+    void on_pushButton_get_RMS_V_clicked();
+
 private:
     Ui::MainWindow *ui;
     UART *uart;
+    QTimer* timerRequest;
 };
 #endif // MAINWINDOW_H
