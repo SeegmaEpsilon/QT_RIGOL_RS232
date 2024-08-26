@@ -39,6 +39,8 @@ public slots:
   void configureMenuPorts(QMenu *menu_to_config);
 signals:
   void signalPortUnavailable();
+  void signalDeviceNotOpen();
+
   void signalMessageReseived(const QString& message);
 
 private:

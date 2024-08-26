@@ -24,10 +24,15 @@ public slots:
     void printConsole(const QString &string);
     void slotMessageProcess(QString message);
     void log(const QString &message);
+    void slotWriteCommand();
 private slots:
     void on_pushButton_uart_connect_clicked();
+    void on_checkBox_channel_1_active_toggled(bool checked);
+    void on_checkBox_channel_2_active_toggled(bool checked);
 
-    void on_pushButton_get_RMS_V_clicked();
+    void on_pushButton_polling_clicked();
+
+    void on_pushButton_write_command_clicked();
 
 private:
     Ui::MainWindow *ui;

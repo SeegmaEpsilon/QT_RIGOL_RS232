@@ -17,16 +17,19 @@ MainWindow::MainWindow(QWidget *parent)
         QMessageBox::warning(this, QString::fromUtf8("Ошибка"), QString::fromUtf8("Выбранный порт недоступен"));
     });
 
-    connect(timerRequest, &QTimer::timeout, this, [this]()
+    connect(uart, &UART::signalDeviceNotOpen, this, [this]()
     {
-        QString request = ":meas:vrms? chan1\n";
-        uart->send(request);
-        qDebug() << "Requested:     " << request;
+        QMessageBox::warning(this, QString::fromUtf8("Ошибка"), QString::fromUtf8("Нет связи с устройством"));
     });
+
+    connect(timerRequest, &QTimer::timeout, this, &MainWindow::slotWriteCommand);
 
     connect(uart, &UART::signalMessageReseived, this, &MainWindow::slotMessageProcess);
 
-    // TODO: реализовать запрос данных от осциллографа RIGOL через RS232
+    QString time = QTime::currentTime().toString("HH:mm:ss");
+    QString date = QDateTime::currentDateTime().toString("dd.MM.yyyy");
+
+    ui->lineEdit_output_file_name->setText(QString("log_%1_%2.txt").arg(date, time));
 }
 
 MainWindow::~MainWindow()
@@ -34,14 +37,68 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::slotWriteCommand()
+{
+    QMap<int, QString> eofMap
+    {
+        {0, ""},
+        {1, "\r"},
+        {2, "\n"},
+        {3, "\r\n"},
+        {4, "\n\r"},
+    };
+
+    if(ui->checkBox_channel_1_active->isChecked())
+    {
+        if(ui->lineEdit_channel_1_command->text().isEmpty())
+        {
+            QMessageBox::warning(this, QString::fromUtf8("Ошибка"), QString::fromUtf8("Введите команду"));
+            return;
+        }
+    }
+
+    if(ui->checkBox_channel_2_active->isChecked())
+    {
+        if(ui->lineEdit_channel_2_command->text().isEmpty())
+        {
+            QMessageBox::warning(this, QString::fromUtf8("Ошибка"), QString::fromUtf8("Введите команду"));
+            return;
+        }
+    }
+
+    if(ui->checkBox_channel_1_active->isChecked() && ui->checkBox_channel_2_active->isChecked())
+    {
+        if(ui->lineEdit_channel_1_command->text().isEmpty() || ui->lineEdit_channel_2_command->text().isEmpty())
+        {
+            QMessageBox::warning(this, QString::fromUtf8("Ошибка"), QString::fromUtf8("Введите команду"));
+            return;
+        }
+    }
+
+    QString request_channel_1 = ui->lineEdit_channel_1_command->text() + eofMap[ui->comboBox_EOF->currentIndex()];
+    QString request_channel_2 = ui->lineEdit_channel_2_command->text() + eofMap[ui->comboBox_EOF->currentIndex()];
+
+    if(ui->checkBox_channel_1_active->isChecked()) uart->send(request_channel_1);
+    if(ui->checkBox_channel_2_active->isChecked()) uart->send(request_channel_2);
+
+    qDebug() << "Requested [channel 1]:     " << request_channel_1;
+    qDebug() << "Requested [channel 2]:     " << request_channel_2;
+}
+
 // в .csv формате
 void MainWindow::log(const QString& message)
 {
-  QString time = QTime::currentTime().toString("HH:mm:ss.zzz");
+  QString time = QTime::currentTime().toString("HH:mm:ss");
   QString date = QDateTime::currentDateTime().toString("dd.MM.yyyy");
-  QString message_to_write = date + "," + time + "," + message + "\r\n";
 
-  QFile fileOut(QCoreApplication::applicationDirPath () + "/" + "log.txt");
+  QString message_channel_1 = "";
+  QString message_channel_2 = "";
+
+  // TODO: реализовать отслеживание текущего канала для записи логов в одну строчку
+
+  QString message_to_write = QString("%1 %2 %3 %4").arg(date, time, message_channel_1, message_channel_2);
+
+  QFile fileOut(QCoreApplication::applicationDirPath () + "/" + ui->lineEdit_output_file_name->text());
 
   if(fileOut.open(QIODevice::WriteOnly | QIODevice::Append))
   {
@@ -83,20 +140,66 @@ void MainWindow::on_pushButton_uart_connect_clicked()
     }
 }
 
-void MainWindow::on_pushButton_get_RMS_V_clicked()
+void MainWindow::on_checkBox_channel_1_active_toggled(bool checked)
+{
+    if(checked)
+    {
+        ui->lineEdit_channel_1_command->setEnabled(true);
+        ui->comboBox_EOF->setEnabled(true);
+        ui->pushButton_polling->setEnabled(true);
+        ui->pushButton_write_command->setEnabled(true);
+    }
+    else
+    {
+        ui->lineEdit_channel_1_command->setEnabled(false);
+        if(!ui->checkBox_channel_2_active->isChecked())
+        {
+            ui->comboBox_EOF->setEnabled(false);
+            ui->pushButton_polling->setEnabled(false);
+            ui->pushButton_write_command->setEnabled(false);
+        }
+    }
+}
+
+void MainWindow::on_checkBox_channel_2_active_toggled(bool checked)
+{
+    if(checked)
+    {
+        ui->lineEdit_channel_2_command->setEnabled(true);
+        ui->comboBox_EOF->setEnabled(true);
+        ui->pushButton_polling->setEnabled(true);
+    }
+    else
+    {
+        ui->lineEdit_channel_2_command->setEnabled(false);
+        if(!ui->checkBox_channel_1_active->isChecked())
+        {
+            ui->comboBox_EOF->setEnabled(false);
+            ui->pushButton_polling->setEnabled(false);
+            ui->pushButton_write_command->setEnabled(false);
+        }
+    }
+}
+
+void MainWindow::on_pushButton_polling_clicked()
 {
     static bool isConnected = false;
 
     if(!isConnected)
     {
-        timerRequest->start(1000);
-        ui->pushButton_get_RMS_V->setText(tr("Остановить запрос СКЗ напряжения первого канала осциллографа"));
+        timerRequest->start(ui->lineEdit_polling_time->text().toInt());
+        ui->pushButton_polling->setText(tr("Остановить опрос"));
         isConnected = true;
     }
     else
     {
         timerRequest->stop();
-        ui->pushButton_get_RMS_V->setText(tr("Начать запрос СКЗ напряжения первого канала осциллографа"));
+        ui->pushButton_polling->setText(tr("Начать опрос"));
         isConnected = false;
     }
+}
+
+void MainWindow::on_pushButton_write_command_clicked()
+{
+    slotWriteCommand();
 }

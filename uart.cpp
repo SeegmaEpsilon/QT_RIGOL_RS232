@@ -18,7 +18,10 @@ UART::~UART()
 
 void UART::send(const QString& message)
 {
-    serialPort->write(message.toStdString().c_str());
+    if(serialPort->write(message.toStdString().c_str()) == -1)
+    {
+        emit signalDeviceNotOpen();
+    }
 }
 
 void UART::open()
