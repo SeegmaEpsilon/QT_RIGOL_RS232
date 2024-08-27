@@ -9,6 +9,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     timerRequest = new QTimer();
     uart = new UART();
+    expectedMessagesCounter = 0;
 
     uart->configureAllMenus(ui->menuSettings);
 
@@ -26,10 +27,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(uart, &UART::signalMessageReseived, this, &MainWindow::slotMessageProcess);
 
-    QString time = QTime::currentTime().toString("HH:mm:ss");
+    connect(ui->checkBox_channel_1_active, &QCheckBox::toggled, this, [=](bool checked){ on_channel_active_toggled(1, checked); });
+    connect(ui->checkBox_channel_2_active, &QCheckBox::toggled, this, [=](bool checked){ on_channel_active_toggled(2, checked); });
+
     QString date = QDateTime::currentDateTime().toString("dd.MM.yyyy");
 
-    ui->lineEdit_output_file_name->setText(QString("log_%1_%2.txt").arg(date, time));
+    ui->lineEdit_output_file_name->setText(QString("log_%1.txt").arg(date));
 }
 
 MainWindow::~MainWindow()
@@ -86,17 +89,46 @@ void MainWindow::slotWriteCommand()
 }
 
 // в .csv формате
-void MainWindow::log(const QString& message)
+void MainWindow::log(QString message)
 {
-  QString time = QTime::currentTime().toString("HH:mm:ss");
+  static uint8_t innerCounter = 0;
+  static QList<QString> messages({"", ""});
+
+  messages[innerCounter] = message;
+  innerCounter++;
+
+  if(innerCounter < expectedMessagesCounter) return;
+  else
+  {
+    innerCounter = 0;
+  }
+
   QString date = QDateTime::currentDateTime().toString("dd.MM.yyyy");
+  QString time = QTime::currentTime().toString("HH:mm:ss");
 
-  QString message_channel_1 = "";
-  QString message_channel_2 = "";
+  QString message_channel_1;
+  QString message_channel_2;
 
-  // TODO: реализовать отслеживание текущего канала для записи логов в одну строчку
+  if (expectedMessagesCounter == 2)
+  {
+    message_channel_1 = messages.at(0);
+    message_channel_2 = messages.at(1);
+  }
+  else if (ui->checkBox_channel_1_active->isChecked())
+  {
+    message_channel_1 = messages.at(0);
+    message_channel_2 = "";  // Второй канал неактивен
+  }
+  else if (ui->checkBox_channel_2_active->isChecked())
+  {
+    message_channel_1 = "";  // Первый канал неактивен
+    message_channel_2 = messages.at(0);
+  }
 
-  QString message_to_write = QString("%1 %2 %3 %4").arg(date, time, message_channel_1, message_channel_2);
+  QString message_to_write = QString("%1 %2,%3,%4\r\n").arg(date, time, message_channel_1, message_channel_2);
+
+  messages[0].clear();
+  messages[1].clear();
 
   QFile fileOut(QCoreApplication::applicationDirPath () + "/" + ui->lineEdit_output_file_name->text());
 
@@ -105,12 +137,17 @@ void MainWindow::log(const QString& message)
     fileOut.write(message_to_write.toUtf8());
     fileOut.close();
   }
+
+  qDebug() << "Logged: " << message_to_write;
 }
 
 void MainWindow::slotMessageProcess(QString message)
 {
-    printConsole(message);
-    log(message);
+  if(ui->checkBox_channel_1_active->isChecked() && ui->checkBox_channel_2_active->isChecked()) expectedMessagesCounter = 2;
+  else expectedMessagesCounter = 1;
+
+  printConsole(message);
+  log(message);
 }
 
 void MainWindow::printConsole(const QString& string)
@@ -140,45 +177,32 @@ void MainWindow::on_pushButton_uart_connect_clicked()
     }
 }
 
-void MainWindow::on_checkBox_channel_1_active_toggled(bool checked)
+void MainWindow::on_channel_active_toggled(int channel, bool checked)
 {
-    if(checked)
-    {
-        ui->lineEdit_channel_1_command->setEnabled(true);
-        ui->comboBox_EOF->setEnabled(true);
-        ui->pushButton_polling->setEnabled(true);
-        ui->pushButton_write_command->setEnabled(true);
-    }
-    else
-    {
-        ui->lineEdit_channel_1_command->setEnabled(false);
-        if(!ui->checkBox_channel_2_active->isChecked())
-        {
-            ui->comboBox_EOF->setEnabled(false);
-            ui->pushButton_polling->setEnabled(false);
-            ui->pushButton_write_command->setEnabled(false);
-        }
-    }
-}
+  if(channel == 1)
+  {
+    ui->lineEdit_channel_1_command->setEnabled(checked);
+  }
+  else if(channel == 2)
+  {
+    ui->lineEdit_channel_2_command->setEnabled(checked);
+  }
 
-void MainWindow::on_checkBox_channel_2_active_toggled(bool checked)
-{
-    if(checked)
+  if(checked)
+  {
+    ui->comboBox_EOF->setEnabled(true);
+    ui->pushButton_polling->setEnabled(true);
+    ui->pushButton_write_command->setEnabled(true);
+  }
+  else
+  {
+    if(!ui->checkBox_channel_1_active->isChecked() && !ui->checkBox_channel_2_active->isChecked())
     {
-        ui->lineEdit_channel_2_command->setEnabled(true);
-        ui->comboBox_EOF->setEnabled(true);
-        ui->pushButton_polling->setEnabled(true);
+      ui->comboBox_EOF->setEnabled(false);
+      ui->pushButton_polling->setEnabled(false);
+      ui->pushButton_write_command->setEnabled(false);
     }
-    else
-    {
-        ui->lineEdit_channel_2_command->setEnabled(false);
-        if(!ui->checkBox_channel_1_active->isChecked())
-        {
-            ui->comboBox_EOF->setEnabled(false);
-            ui->pushButton_polling->setEnabled(false);
-            ui->pushButton_write_command->setEnabled(false);
-        }
-    }
+  }
 }
 
 void MainWindow::on_pushButton_polling_clicked()

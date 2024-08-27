@@ -23,12 +23,11 @@ public:
 public slots:
     void printConsole(const QString &string);
     void slotMessageProcess(QString message);
-    void log(const QString &message);
+    void log(QString message);
     void slotWriteCommand();
-private slots:
+  private slots:
     void on_pushButton_uart_connect_clicked();
-    void on_checkBox_channel_1_active_toggled(bool checked);
-    void on_checkBox_channel_2_active_toggled(bool checked);
+    void on_channel_active_toggled(int channel, bool checked);
 
     void on_pushButton_polling_clicked();
 
@@ -38,5 +37,6 @@ private:
     Ui::MainWindow *ui;
     UART *uart;
     QTimer* timerRequest;
+    uint8_t expectedMessagesCounter;
 };
 #endif // MAINWINDOW_H
