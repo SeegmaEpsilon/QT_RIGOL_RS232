@@ -7,36 +7,39 @@
 #include <QDebug>
 #include <QFile>
 #include <QTimer>
+#include "channel.h"
 
-QT_BEGIN_NAMESPACE
-namespace Ui { class MainWindow; }
-QT_END_NAMESPACE
+namespace Ui {
+class MainWindow;
+}
 
 class MainWindow : public QMainWindow
 {
-    Q_OBJECT
+  Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
-    ~MainWindow();
+  explicit MainWindow(QWidget *parent = nullptr);
+  ~MainWindow();
 
-public slots:
-    void printConsole(const QString &string);
-    void slotMessageProcess(QString message);
-    void log(QString message);
-    void slotWriteCommand();
-  private slots:
-    void on_pushButton_uart_connect_clicked();
-    void on_channel_active_toggled(int channel, bool checked);
+private slots:
+  void slotWriteCommand();
+  void slotMessageProcess(QString message);
+  void on_pushButton_uart_connect_clicked();
+  void on_pushButton_polling_clicked();
+  void on_pushButton_write_command_clicked();
+  void on_channel_active_toggled(int channel, bool checked);
 
-    void on_pushButton_polling_clicked();
-
-    void on_pushButton_write_command_clicked();
+  void printConsole(const QString& string);
 
 private:
-    Ui::MainWindow *ui;
-    UART *uart;
-    QTimer* timerRequest;
-    uint8_t expectedMessagesCounter;
+  Ui::MainWindow *ui;
+  QTimer* timerRequest;
+  UART* uart;
+
+  Channel* channel1;
+  Channel* channel2;
+
+  void log();
 };
+
 #endif // MAINWINDOW_H
