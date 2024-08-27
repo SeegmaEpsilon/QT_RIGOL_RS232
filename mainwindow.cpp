@@ -9,8 +9,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
   timerRequest = new QTimer();
   uart = new UART();
 
-  channel1 = new Channel(ui->checkBox_channel_1_active, ui->lineEdit_channel_1_command, this);
-  channel2 = new Channel(ui->checkBox_channel_2_active, ui->lineEdit_channel_2_command, this);
+  channels.push_back(new Channel(ui->checkBox_channel_1_active, ui->lineEdit_channel_1_command, this));
+  channels.push_back(new Channel(ui->checkBox_channel_2_active, ui->lineEdit_channel_2_command, this));
 
   uart->configureAllMenus(ui->menuSettings);
 
@@ -21,14 +21,25 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
   connect(timerRequest, &QTimer::timeout, this, &MainWindow::slotWriteCommand);
   connect(uart, &UART::signalMessageReseived, this, &MainWindow::slotMessageProcess);
 
-  connect(channel1->getCheckBox(), &QCheckBox::toggled, this, [this](bool checked) { on_channel_active_toggled(1, checked); });
-  connect(channel2->getCheckBox(), &QCheckBox::toggled, this, [this](bool checked) { on_channel_active_toggled(2, checked); });
+  // Подключаем сигналы для всех каналов
+  for (uint8_t i = 0; i < channels.size(); ++i)
+  {
+    connect(channels[i]->getCheckBox(), &QCheckBox::toggled, this, [this, i](bool checked) { on_channel_active_toggled(i, checked); });
+  }
 
   QString date = QDateTime::currentDateTime().toString("dd.MM.yyyy");
-  ui->lineEdit_output_file_name->setText(QString("log_%1.txt").arg(date));
+  ui->lineEdit_output_file_name->setText(QString("log_%1.csv").arg(date));
 }
 
-MainWindow::~MainWindow() { delete ui; }
+MainWindow::~MainWindow()
+{
+  delete ui;
+  // Не забываем освободить память, выделенную для каналов
+  for (Channel* channel : channels)
+  {
+    delete channel;
+  }
+}
 
 void MainWindow::slotWriteCommand()
 {
@@ -36,58 +47,47 @@ void MainWindow::slotWriteCommand()
       {0, ""}, {1, "\r"}, {2, "\n"}, {3, "\r\n"}, {4, "\n\r"},
   };
 
-  if (channel1->isActive())
+  for (Channel* channel : channels)
   {
-    QString command = channel1->getCommand(eofMap[ui->comboBox_EOF->currentIndex()]);
-    if (!command.isEmpty())
+    if (channel->isActive())
     {
-      uart->send(command);
-      qDebug() << "Requested [Channel 1]: " << command;
-    }
-  }
-
-  if (channel2->isActive())
-  {
-    QString command = channel2->getCommand(eofMap[ui->comboBox_EOF->currentIndex()]);
-    if (!command.isEmpty())
-    {
-      uart->send(command);
-      qDebug() << "Requested [Channel 2]: " << command;
+      QString command = channel->getCommand(eofMap[ui->comboBox_EOF->currentIndex()]);
+      if (!command.isEmpty())
+      {
+        uart->send(command);
+        qDebug() << "Requested [Channel]: " << command;
+      }
     }
   }
 }
 
 void MainWindow::slotMessageProcess(QString message)
 {
-  // Если оба канала активны
-  if (channel1->isActive() && channel2->isActive())
-  {
-    if (channel1->getMessage().isEmpty())
-    {
-      channel1->setMessage(message);
-    }
-    else if (channel2->getMessage().isEmpty())
-    {
-      channel2->setMessage(message);
-    }
+  bool allMessagesReady = true;
 
-    // Проверяем, готовы ли оба сообщения
-    if (!channel1->getMessage().isEmpty() && !channel2->getMessage().isEmpty())
+  for (Channel* channel : channels)
+  {
+    if (channel->isActive() && channel->getMessage().isEmpty())
     {
-      log();  // Запись лога только после получения сообщений от обоих каналов
+      channel->setMessage(message);
+      break; // Выходим, так как сообщение назначено только одному каналу
     }
-  }
-  else if (channel1->isActive() && !channel2->isActive())  // Только первый канал активен
-  {
-    channel1->setMessage(message);
-    log();  // Запись лога после получения сообщения от первого канала
-  }
-  else if (channel2->isActive() && !channel1->isActive())  // Только второй канал активен
-  {
-    channel2->setMessage(message);
-    log();  // Запись лога после получения сообщения от второго канала
   }
 
+  // Проверяем, готовы ли сообщения на всех активных каналах
+  for (Channel* channel : channels)
+  {
+    if (channel->isActive() && channel->getMessage().isEmpty())
+    {
+      allMessagesReady = false;
+      break;
+    }
+  }
+
+  if (allMessagesReady)
+  {
+    log(); // Записываем лог, когда все сообщения готовы
+  }
 }
 
 void MainWindow::log()
@@ -96,14 +96,23 @@ void MainWindow::log()
   QString time = QTime::currentTime().toString("HH:mm:ss");
 
   QString message_to_write = QString("%1 %2,%3,%4\r\n")
-                                 .arg(date, time, channel1->getMessage(), channel2->getMessage());
+                                 .arg(date, time, channels[0]->getMessage(), channels[1]->getMessage());
 
   printConsole(message_to_write);
 
-  QFile fileOut(QCoreApplication::applicationDirPath() + "/" + ui->lineEdit_output_file_name->text());
+  QString logFilePath = QCoreApplication::applicationDirPath() + "/" + ui->lineEdit_output_file_name->text();
+  QFile fileOut(logFilePath);
 
-  if (fileOut.open(QIODevice::WriteOnly | QIODevice::Append))
-  {
+         // Проверяем, существует ли файл и его размер
+  bool fileExists = QFile::exists(logFilePath);
+  if (fileOut.open(QIODevice::WriteOnly | QIODevice::Append)) {
+    // Если файл не существовал или был пустым, добавляем заголовок
+    if (!fileExists || fileOut.size() == 0) {
+      QString header = "date time,channel1,channel2\r\n";
+      fileOut.write(header.toUtf8());
+    }
+
+    // Записываем строку данных
     fileOut.write(message_to_write.toUtf8());
     fileOut.close();
   }
@@ -111,8 +120,27 @@ void MainWindow::log()
   qDebug() << "Logged: " << message_to_write;
 
          // Сбрасываем сообщения только после успешной записи лога
-  channel1->reset();
-  channel2->reset();
+  for (Channel* channel : channels) {
+    channel->reset();
+  }
+}
+
+void MainWindow::on_channel_active_toggled(int channelIndex, bool checked)
+{
+  channels[channelIndex]->setLineEditState(checked);
+
+  if (checked)
+  {
+    ui->comboBox_EOF->setEnabled(true);
+    ui->pushButton_polling->setEnabled(true);
+    ui->pushButton_write_command->setEnabled(true);
+  }
+  else if (!channels[0]->isActive() && !channels[1]->isActive())
+  {
+    ui->comboBox_EOF->setEnabled(false);
+    ui->pushButton_polling->setEnabled(false);
+    ui->pushButton_write_command->setEnabled(false);
+  }
 }
 
 void MainWindow::on_pushButton_uart_connect_clicked()
@@ -130,26 +158,6 @@ void MainWindow::on_pushButton_uart_connect_clicked()
     uart->close();
     ui->pushButton_uart_connect->setText(tr("Подключиться"));
     isConnected = false;
-  }
-}
-
-void MainWindow::on_channel_active_toggled(int channel, bool checked)
-{
-  Channel* ch = (channel == 1) ? channel1 : channel2;
-
-  ch->lineEditState(checked);
-
-  if (checked)
-  {
-    ui->comboBox_EOF->setEnabled(true);
-    ui->pushButton_polling->setEnabled(true);
-    ui->pushButton_write_command->setEnabled(true);
-  }
-  else if (!channel1->isActive() && !channel2->isActive())
-  {
-    ui->comboBox_EOF->setEnabled(false);
-    ui->pushButton_polling->setEnabled(false);
-    ui->pushButton_write_command->setEnabled(false);
   }
 }
 

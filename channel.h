@@ -21,7 +21,7 @@ public:
   void setMessage(const QString& message);
   QString getMessage() const;
   void reset();
-  void lineEditState(bool state);
+  void setLineEditState(bool state);
 
   QLineEdit* getLineEdit();
   QCheckBox* getCheckBox();

@@ -5,7 +5,7 @@ Channel::Channel(QCheckBox* activeCheckBox, QLineEdit* commandLineEdit, QObject*
 
 bool Channel::isActive() const { return activeCheckBox->isChecked(); }
 
-void Channel::lineEditState(bool state) { this->commandLineEdit->setEnabled(state); }
+void Channel::setLineEditState(bool state) { this->commandLineEdit->setEnabled(state); }
 
 QLineEdit* Channel::getLineEdit() { return this->commandLineEdit; }
 
