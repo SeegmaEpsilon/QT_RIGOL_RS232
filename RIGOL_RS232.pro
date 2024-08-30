@@ -17,12 +17,14 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     channel.cpp \
+    channelmanager.cpp \
     main.cpp \
     mainwindow.cpp \
     uart.cpp
 
 HEADERS += \
     channel.h \
+    channelmanager.h \
     mainwindow.h \
     uart.h
 
