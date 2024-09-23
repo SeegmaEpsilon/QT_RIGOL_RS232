@@ -158,7 +158,7 @@
     <item row="7" column="3">
      <widget class="QPushButton" name="pushButton_consoleClear">
       <property name="text">
-       <string>Очистить</string>
+       <string>Очистить консоль</string>
       </property>
      </widget>
     </item>

@@ -27,6 +27,7 @@ public:
 private:
   QLineEdit* commandLineEdit;
   QString message;
+  Channel* channelLastRequsted;
 };
 
 #endif // CHANNEL_H

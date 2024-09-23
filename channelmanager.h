@@ -16,25 +16,25 @@ public:
     void addChannel(Channel* channel);
     Channel* getChannel(size_t channelIndex);
     void sendNextCommand();
-    void handleMessage(const QString& message);
     QStringList collectMessages() const;
     void resetChannels();
 
 public slots:
-    void onMessageReceived(const QString& message);
-
+    void handleMessage(const QString& message);
     void process();
+
 signals:
     void allMessagesReceived();
 
 private:
     std::vector<Channel*> channels;
+    std::vector<Channel*> activeChannels;
+
     UART* uart;
 
     QComboBox* eofComboBox;
 
     size_t currentChannelIndex;
-    size_t activeChannelsCount;
 };
 
 #endif // CHANNELMANAGER_H

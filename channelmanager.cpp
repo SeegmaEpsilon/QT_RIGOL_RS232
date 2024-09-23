@@ -2,7 +2,7 @@
 #include "channelmanager.h"
 
 ChannelManager::ChannelManager(UART* uart, QComboBox* eofComboBox, QObject* parent)
-    : QObject(parent), uart(uart), eofComboBox(eofComboBox), currentChannelIndex(0), activeChannelsCount(0) {}
+    : QObject(parent), uart(uart), eofComboBox(eofComboBox), currentChannelIndex(0) {}
 
 void ChannelManager::addChannel(Channel* channel) { channels.push_back(channel); }
 Channel *ChannelManager::getChannel(size_t channelIndex) { return channels[channelIndex]; }
@@ -12,21 +12,20 @@ void ChannelManager::process()
     resetChannels();
     for (Channel* channel : channels)
     {
-        if(!channel->getCommand().isEmpty()) activeChannelsCount++;
+        if(!channel->getCommand().isEmpty()) activeChannels.push_back(channel);
     }
-    sendNextCommand();
+
+    if(!activeChannels.empty()) sendNextCommand();
 }
 
 void ChannelManager::sendNextCommand()
 {
-    if(currentChannelIndex < activeChannelsCount)
+    if(currentChannelIndex < activeChannels.size())
     {
         QMap<int, QString> eofMap { {0, ""}, {1, "\r"}, {2, "\n"}, {3, "\r\n"}, {4, "\n\r"}, };
-        Channel* channel = channels[currentChannelIndex];
+        Channel* channel = activeChannels[currentChannelIndex];
 
-        // TODO: исправить передачу данных 2-му каналу
-        if(channel->getCommand().isEmpty()) return;
-
+        // Отправляем команду текущему каналу
         QString command = channel->getCommand() + eofMap[eofComboBox->currentIndex()];
         uart->send(command);
     }
@@ -34,20 +33,15 @@ void ChannelManager::sendNextCommand()
 
 void ChannelManager::handleMessage(const QString& message)
 {
-    if(currentChannelIndex < activeChannelsCount)
+    if(currentChannelIndex < activeChannels.size())
     {
-        Channel* channel = channels[currentChannelIndex];
+        Channel* channel = activeChannels[currentChannelIndex];
         channel->setMessage(message);
+
         currentChannelIndex++;
 
-        if (currentChannelIndex < activeChannelsCount)
-        {
-            sendNextCommand(); // Отправляем следующую команду, если есть еще каналы
-        }
-        else
-        {
-            emit allMessagesReceived(); // Сообщаем, что все сообщения получены
-        }
+        if(currentChannelIndex == activeChannels.size()) emit allMessagesReceived();
+        else sendNextCommand();
     }
 }
 
@@ -64,7 +58,7 @@ QStringList ChannelManager::collectMessages() const
 void ChannelManager::resetChannels()
 {
     currentChannelIndex = 0;
-    activeChannelsCount = 0;
+    activeChannels.clear();
 
     for (Channel* channel : channels)
     {
@@ -72,7 +66,3 @@ void ChannelManager::resetChannels()
     }
 }
 
-void ChannelManager::onMessageReceived(const QString& message)
-{
-    handleMessage(message);
-}

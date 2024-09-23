@@ -15,7 +15,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     uart->configureAllMenus(ui->menuSettings);
 
-    connect(uart, &UART::signalMessageReseived, channelManager, &ChannelManager::onMessageReceived);
+    connect(uart, &UART::signalMessageReseived, channelManager, &ChannelManager::handleMessage);
     connect(channelManager, &ChannelManager::allMessagesReceived, this, &MainWindow::log);
     connect(timerRequest, &QTimer::timeout, channelManager, &ChannelManager::process);
 
