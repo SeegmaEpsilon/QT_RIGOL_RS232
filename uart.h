@@ -53,7 +53,6 @@ private:
     QSerialPort *serialPort;
     QString serialBuffer;
     uartParameters uartCurrent;
-
 };
 
 #endif // UART_H

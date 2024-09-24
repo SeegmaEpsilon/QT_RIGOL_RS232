@@ -147,8 +147,8 @@ void UART::configureMenuBaudrate(QMenu* menu_to_config)
     QAction *action1200 = menuBaudrate->addAction(tr("1200"), this, [this]() { uartCurrent.baudRate = QSerialPort::Baud1200; });
     QAction *action2400 = menuBaudrate->addAction(tr("2400"), this, [this]() { uartCurrent.baudRate = QSerialPort::Baud2400; });
     QAction *action4800 = menuBaudrate->addAction(tr("4800"), this, [this]() { uartCurrent.baudRate = QSerialPort::Baud4800; });
-    QAction *action9600 = menuBaudrate->addAction(tr("9600 (по умолчанию)"), this, [this]() { uartCurrent.baudRate = QSerialPort::Baud9600; });
-    QAction *action19200 = menuBaudrate->addAction(tr("19200"), this, [this]() { uartCurrent.baudRate = QSerialPort::Baud19200; });
+    QAction *action9600 = menuBaudrate->addAction(tr("9600"), this, [this]() { uartCurrent.baudRate = QSerialPort::Baud9600; });
+    QAction *action19200 = menuBaudrate->addAction(tr("19200 (по умолчанию)"), this, [this]() { uartCurrent.baudRate = QSerialPort::Baud19200; });
     QAction *action38400 = menuBaudrate->addAction(tr("38400"), this, [this]() { uartCurrent.baudRate = QSerialPort::Baud38400; });
     QAction *action57600 = menuBaudrate->addAction(tr("57600"), this, [this]() { uartCurrent.baudRate = QSerialPort::Baud57600; });
     QAction *action115200 = menuBaudrate->addAction(tr("115200"), this, [this]() { uartCurrent.baudRate = QSerialPort::Baud115200; });
@@ -166,9 +166,9 @@ void UART::configureMenuBaudrate(QMenu* menu_to_config)
     // Устанавливаем эксклюзивность, чтобы только одно действие могло быть выбрано в один момент времени
     baudrateGroup->setExclusive(true);
 
-    // Устанавливаем начальное состояние (например, 9600 по умолчанию)
-    action9600->setCheckable(true);
-    action9600->setChecked(true);
+    // Устанавливаем начальное состояние (например, 19200 по умолчанию)
+    action19200->setCheckable(true);
+    action19200->setChecked(true);
 
     for (QAction *action : baudrateGroup->actions())
     {

@@ -30,6 +30,12 @@
       <property name="enabled">
        <bool>true</bool>
       </property>
+      <property name="text">
+       <string>:meas:vrms? chan1</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
      </widget>
     </item>
     <item row="8" column="1">
@@ -79,6 +85,15 @@
         <width>200</width>
         <height>0</height>
        </size>
+      </property>
+      <property name="layoutDirection">
+       <enum>Qt::LeftToRight</enum>
+      </property>
+      <property name="currentIndex">
+       <number>2</number>
+      </property>
+      <property name="sizeAdjustPolicy">
+       <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
       </property>
       <item>
        <property name="text">
@@ -153,12 +168,28 @@
       <property name="enabled">
        <bool>true</bool>
       </property>
+      <property name="text">
+       <string>:meas:vrms? chan2</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
      </widget>
     </item>
     <item row="7" column="3">
      <widget class="QPushButton" name="pushButton_consoleClear">
       <property name="text">
        <string>Очистить консоль</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="1">
+     <widget class="QLabel" name="label_5">
+      <property name="text">
+       <string>Терминальный символ</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
       </property>
      </widget>
     </item>
